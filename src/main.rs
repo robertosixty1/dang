@@ -23,6 +23,7 @@ fn main() -> Result<()> {
         .arg("output.asm")
         .arg("-o")
         .arg("output.o")
+        .arg("-gdwarf2")
         .output()
         .expect("ERROR: Failed to execute command");
 
