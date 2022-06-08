@@ -268,6 +268,8 @@ impl DangStatement {
         } else if !self.expression.is_empty() {
             self.expression.parse_into_operantions(ir)
         } else if !self.function_call.is_empty() {
+            // when a function call is encountered inside another statement
+            // its return value is being used
             self.function_call.parse_into_operantions(ir, true)
         } else if !self.block.is_empty() {
             todo!("report blocks not allowed")
@@ -275,6 +277,8 @@ impl DangStatement {
             self.operation.parse_into_operantions(ir)
         } else if !self.number.is_none() {
             ir.push(IrInstruction { instruction_type: IrInstructionType::PushInt, operand: self.number.unwrap() })
+        } else {
+            panic!("unreachable")
         }
     }
 }
@@ -350,6 +354,8 @@ impl DangAst {
                 todo!("report: you cant just drop a operation randomly in the code")
             } else if !node.number.is_none() {
                 todo!("report: you cant just drop a number randomly in the code")
+            } else {
+                panic!("unreachable")
             }
         }
 
