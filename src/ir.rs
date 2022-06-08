@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::*;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub enum IrInstructionType {
     PushInt,
     Plus,
@@ -9,8 +9,7 @@ pub enum IrInstructionType {
     Division,
     Multiplication,
     Mod,
-    Print,
-    Count
+    Print
 }
 
 #[derive(Clone)]
@@ -21,7 +20,6 @@ pub struct IrInstruction {
 
 impl IrInstruction {
     pub fn to_nasm_linux_x86_64_assembly(&self, f: &mut File) -> Result<()> {
-        assert_eq!(IrInstructionType::Count as i64, 7);
         use IrInstructionType::*;
         write!(f, ";; -- {:?} --\n", self.instruction_type)?;
         match self.instruction_type {
@@ -64,8 +62,7 @@ impl IrInstruction {
             Print => {
                 write!(f, "pop rdi\n")?;
                 write!(f, "call print\n")?;
-            },
-            _ => panic!("unreachable")
+            }
         }
         Ok(())
     }
