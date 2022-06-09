@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LexerTokenKind {
     Integer,
     Word,
@@ -12,6 +12,7 @@ pub enum LexerTokenKind {
     Minus,
     Multiplication,
     Division,
+    Mod,
     ExclamationMark,
     Comma
 }
@@ -74,6 +75,7 @@ impl<Chars: Iterator<Item=char>> Iterator for Lexer<Chars> {
                 '/' => Some(LexerToken {kind: Division, value: LexerTokenValue::from_string(text)}),
                 '!' => Some(LexerToken {kind: ExclamationMark, value: LexerTokenValue::from_string(text)}),
                 ',' => Some(LexerToken {kind: Comma, value: LexerTokenValue::from_string(text)}),
+                '%' => Some(LexerToken {kind: Mod, value: LexerTokenValue::from_string(text)}),
                 _   => {
                     while let Some(x) = self.chars.next_if(|x| x.is_alphanumeric()) {
                         text.push(x);

@@ -1,6 +1,7 @@
 use crate::ir::*;
 use crate::lexer::*;
 use crate::lexer_type;
+use crate::LexerTokenKind::*;
 
 use std::iter::Peekable;
 use std::fmt::*;
@@ -14,6 +15,7 @@ type DangNumber = i64;
 // -=-=-=-= begin DangOperation =-=-=-=-
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub enum DangBinaryOperationType {
     Plus,
     Minus,
@@ -49,6 +51,7 @@ impl DangBinaryOperationType {
     }
 }
 
+#[derive(Clone)]
 pub struct DangOperation {
     pub binary_operation_type: DangBinaryOperationType,
     pub first_operand: Vec<DangStatement>,
@@ -90,6 +93,7 @@ impl DangOperation {
 
 // -=-=-=-= begin DangExpression =-=-=-=-
 
+#[derive(Clone)]
 pub struct DangExpression {
     pub symbols: Vec<DangStatement>
 }
@@ -128,6 +132,7 @@ impl DangExpression {
 
 // -=-=-=-= begin DangBlock =-=-=-=-
 
+#[derive(Clone)]
 pub struct DangBlock {
     pub symbols: Vec<DangStatement>
 }
@@ -183,6 +188,7 @@ impl DangBuiltIn {
 
 // -=-=-=-= begin DangFunctionCall =-=-=-=-
 
+#[derive(Clone)]
 pub struct DangFunctionCall {
     pub name: DangName,
     pub parameters: Vec<DangStatement>,
@@ -222,6 +228,89 @@ impl DangFunctionCall {
         self.name == "" && self.parameters.len() == 0
     }
 
+    pub fn parse_function_call(&mut self, mut lexer: lexer_type!()) {
+        let name = lexer.next().unwrap().value.string;
+        let mut built_in = false;
+        let mut parameters: Vec<DangStatement> = Vec::new();
+
+        if lexer.peek().unwrap().kind == ExclamationMark {
+            lexer.next();
+            built_in = true;
+        }
+
+        assert!(lexer.next().unwrap().kind == OpenParen);
+
+        let mut statement = DangStatement::new();
+
+        let mut stack: Vec<LexerToken> = Vec::new();
+        while let Some(token) = lexer.next_if(|x| x.kind != CloseParen) {
+            match token.kind {
+                Integer => stack.push(token),
+                Mod => {
+                    let a = stack.pop();
+                    statement.operation.binary_operation_type = DangBinaryOperationType::Mod;
+                    statement.operation.first_operand.push(DangStatement::new());
+                    statement.operation.second_operand.push(DangStatement::new());
+                    statement.operation.first_operand[0].number = Some(a.unwrap().value.integer);
+                    statement.operation.second_operand[0].number = Some(lexer.next().unwrap().value.integer);
+                    parameters.push(statement.clone());
+                }
+                Division => {
+                    let a = stack.pop();
+                    statement.operation.binary_operation_type = DangBinaryOperationType::Division;
+                    statement.operation.first_operand.push(DangStatement::new());
+                    statement.operation.second_operand.push(DangStatement::new());
+                    statement.operation.first_operand[0].number = Some(a.unwrap().value.integer);
+                    statement.operation.second_operand[0].number = Some(lexer.next().unwrap().value.integer);
+                    parameters.push(statement.clone());
+                }
+                Multiplication => {
+                    let a = stack.pop();
+                    statement.operation.binary_operation_type = DangBinaryOperationType::Multiplication;
+                    statement.operation.first_operand.push(DangStatement::new());
+                    statement.operation.second_operand.push(DangStatement::new());
+                    statement.operation.first_operand[0].number = Some(a.unwrap().value.integer);
+                    statement.operation.second_operand[0].number = Some(lexer.next().unwrap().value.integer);
+                    parameters.push(statement.clone());
+                }
+                Minus => {
+                    let a = stack.pop();
+                    statement.operation.binary_operation_type = DangBinaryOperationType::Minus;
+                    statement.operation.first_operand.push(DangStatement::new());
+                    statement.operation.second_operand.push(DangStatement::new());
+                    statement.operation.first_operand[0].number = Some(a.unwrap().value.integer);
+                    statement.operation.second_operand[0].number = Some(lexer.next().unwrap().value.integer);
+                    parameters.push(statement.clone());
+                }
+                Plus => {
+                    let a = stack.pop();
+                    statement.operation.binary_operation_type = DangBinaryOperationType::Plus;
+                    statement.operation.first_operand.push(DangStatement::new());
+                    statement.operation.second_operand.push(DangStatement::new());
+                    statement.operation.first_operand[0].number = Some(a.unwrap().value.integer);
+                    statement.operation.second_operand[0].number = Some(lexer.next().unwrap().value.integer);
+                    parameters.push(statement.clone());
+                }
+                Comma => {
+                    continue
+                }
+                _ => todo!("report: invalid syntax")
+            }
+        }
+
+        if stack.len() == 1 {
+            let mut statement = DangStatement::new();
+            statement.number = Some(stack.pop().unwrap().value.integer);
+            parameters.push(statement.clone());
+        } else {
+            todo!("report: invalid syntax")
+        }
+
+        self.name = name;
+        self.is_built_in = built_in;
+        self.parameters = parameters;
+    }
+
     pub fn parse_into_operantions(&self, ir: &mut Ir, used_return: bool) {
         for param in &self.parameters {
             param.parse_into_operantions(ir)
@@ -242,7 +331,7 @@ impl DangFunctionCall {
                 DangBuiltIn::Count => panic!("unreachable")
             }
         } else {
-            todo!("you dont even have function definitions, how you want to call another function???")
+            todo!("you dont even have function definitions, how do you want to call another function???")
         }
     }
 }
@@ -251,6 +340,7 @@ impl DangFunctionCall {
 
 // -=-=-=-= begin DangStatement =-=-=-=-
 
+#[derive(Clone)]
 pub struct DangStatement {
     pub name: DangName,
     pub expression: DangExpression,
@@ -345,8 +435,34 @@ impl DangAst {
         }
     }
 
-    pub fn from_tokens(lexer: lexer_type!()) -> DangAst {
-        todo!()
+    pub fn from_tokens(mut lexer: lexer_type!()) -> DangAst {
+        use LexerTokenKind::*;
+        let mut ast = DangAst::new();
+
+        if let Some(name) = lexer.peek() {
+            match name.kind {
+                Word => {
+                    let mut function_call = DangFunctionCall::new();
+                    function_call.parse_function_call(lexer);
+
+                    let mut statement = DangStatement::new();
+                    statement.function_call = function_call;
+
+                    ast.ast.push(statement);
+                }
+                Integer => {
+                    let mut statement = DangStatement::new();
+                    statement.number = Some(name.value.integer);
+
+                    ast.ast.push(statement);
+                }
+                _ => todo!("report: invalid syntax")
+            }
+        } else {
+            todo!("report: reached EOF")
+        }
+
+        ast
     }
 
     pub fn parse_into_operantions(&self) -> Ir {
