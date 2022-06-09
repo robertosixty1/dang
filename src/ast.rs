@@ -1,4 +1,8 @@
 use crate::ir::*;
+use crate::lexer::*;
+use crate::lexer_type;
+
+use std::iter::Peekable;
 use std::fmt::*;
 
 // DangName
@@ -334,7 +338,7 @@ impl DangAst {
         }
     }
 
-    pub fn from_tokens() -> DangAst {
+    pub fn from_tokens(lexer: lexer_type!()) -> DangAst {
         todo!()
     }
 

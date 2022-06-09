@@ -92,3 +92,10 @@ impl<Chars: Iterator<Item=char>> Iterator for Lexer<Chars> {
         }
     }
 }
+
+#[macro_export]
+macro_rules! lexer_type {
+    () => {
+        Peekable<impl Iterator<Item=LexerToken>>
+    }
+}
