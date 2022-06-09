@@ -191,7 +191,13 @@ pub struct DangFunctionCall {
 
 impl Display for DangFunctionCall {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "{}(", self.name)?;
+        write!(f, "{}", self.name)?;
+
+        if self.is_built_in {
+            write!(f, "!")?;
+        }
+
+        write!(f, "(")?;
         for param in 0..self.parameters.len() {
             write!(f, "{}", self.parameters[param])?;
             if (param + 1) != self.parameters.len() {
@@ -318,14 +324,15 @@ pub struct DangAst {
 
 impl Display for DangAst {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "[")?;
+        write!(f, "{{\n")?;
         for node in 0..self.ast.len() {
-            write!(f, "{}", self.ast[node])?;
+            write!(f, "    {}", self.ast[node])?;
             if (node + 1) != self.ast.len() {
-                write!(f, ", ")?;
+                write!(f, ";")?;
             }
+            write!(f, "\n")?;
         }
-        write!(f, "]")?;
+        write!(f, "}}")?;
         Ok(())
     }
 }
